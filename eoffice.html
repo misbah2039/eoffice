@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>E-Office Status Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f6f9;
+      }
+
+      header {
+        background-color: #2c3e50;
+        color: white;
+        padding: 15px 20px;
+        text-align: center;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .stats-container {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        padding: 15px 15px 0 15px;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin: 10px 20px 5px 20px;
+        border-radius: 8px;
+        height: 120px;
+      }
+
+      .stat-item {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 10px;
+        position: relative;
+        border-right: 1px solid #eee;
+      }
+
+      .stat-item:last-child {
+        border-right: none;
+      }
+
+      .stat-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2c3e50;
+        line-height: 1;
+      }
+
+      .stat-label {
+        font-size: 13px;
+        color: #666;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+
+      .chart-container {
+        height: 40px;
+        margin-top: 8px;
+      }
+
+      main {
+        padding: 20px;
+        max-width: 100%;
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        min-width: 800px;
+        border-collapse: collapse;
+        background-color: white;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: center;
+        border: 1px solid #ddd;
+      }
+
+      th {
+        background-color: #34495e;
+        color: white;
+        position: sticky;
+        left: 0;
+      }
+
+      tr:nth-child(even) {
+        background-color: #f8f9fa;
+      }
+
+      .search-container {
+        margin-bottom: 20px;
+        text-align: right;
+      }
+
+      .search-container input {
+        padding: 8px 12px;
+        width: 100%;
+        max-width: 300px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      .note {
+        margin-top: 1rem;
+        font-style: italic;
+        color: #6c757d;
+        font-size: 0.9rem;
+      }
+
+      footer {
+        background-color: #2c3e50;
+        color: white;
+        text-align: center;
+        padding: 1rem 0;
+        margin-top: 2rem;
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 768px) {
+        .stats-container {
+          grid-template-columns: 1fr;
+          height: auto;
+          margin: 0 10px 10px;
+        }
+
+        .stat-item {
+          border-right: none;
+          border-bottom: 1px solid #eee;
+          padding: 15px 10px;
+        }
+
+        .stat-item:last-child {
+          border-bottom: none;
+        }
+
+        main {
+          padding: 10px;
+        }
+
+        th,
+        td {
+          padding: 8px 10px;
+          font-size: 0.9rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>E-Office Status Tracker</h1>
+    </header>
+
+    <div class="stats-container">
+      <div class="stat-item">
+        <div class="stat-label">VPN Completion</div>
+        <div class="stat-value" id="vpnPercent">0%</div>
+        <div class="chart-container">
+          <canvas id="vpnChart"></canvas>
+        </div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">DSC Completion</div>
+        <div class="stat-value" id="dscPercent">0%</div>
+        <div class="chart-container">
+          <canvas id="dscChart"></canvas>
+        </div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Email Completion</div>
+        <div class="stat-value" id="emailPercent">0%</div>
+        <div class="chart-container">
+          <canvas id="emailChart"></canvas>
+        </div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">PIMS Completion</div>
+        <div class="stat-value" id="pimsPercent">0%</div>
+        <div class="chart-container">
+          <canvas id="pimsChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <div class="search-container">
+        <input
+          type="text"
+          id="searchInput"
+          onkeyup="filterTable()"
+          placeholder="Search by name or designation..."
+        />
+      </div>
+
+      <table id="statusTable">
+        <thead>
+          <tr>
+            <th>Sr No</th>
+            <th>Designation</th>
+            <th>Name</th>
+            <th>VPN</th>
+            <th>DSC</th>
+            <th>Email</th>
+            <th>PIMS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Add the rows here -->
+          <tr>
+            <td>1</td>
+            <td>DG</td>
+            <td>SHRI ADITYA MISHRA</td>
+            <td>×</td>
+            <td>×</td>
+            <td>✓</td>
+            <td>×</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>ADG</td>
+            <td>MRS. PADMAJA CHAUHAN</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>DIG</td>
+            <td>SHRI SURYA KANT TRIPATHI</td>
+            <td>×</td>
+            <td>×</td>
+            <td>✓</td>
+            <td>×</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>CFO(T)</td>
+            <td>ARUN KUMAR SINGH</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>CFO(F/P)</td>
+            <td>ANIMESH SINGH</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td>CFP(O)</td>
+            <td>VIJAY KUMAR SINGH</td>
+            <td>✓</td>
+            <td>×</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td>CFO(Tr)</td>
+            <td>BISHWAROOP BANARJEE</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td>F & AO</td>
+            <td>ASHOK KUMAR SINGH</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td>SIM</td>
+            <td>VINOD KUMAR DIXIT</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td>SIM</td>
+            <td>RAMESH KUMAR PANDEY</td>
+            <td>✓</td>
+            <td>×</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td>SI(LEKHA)</td>
+            <td>ANITA PANDEY</td>
+            <td>✓</td>
+            <td>×</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td>ASIM</td>
+            <td>PAWAN GUPTA</td>
+            <td>✓</td>
+            <td>×</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td>ASIM</td>
+            <td>RACHANA MISHRA</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td>ASIM</td>
+            <td>VIPIN KUMAR</td>
+            <td>✓</td>
+            <td>×</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td>ASIM</td>
+            <td>NEESHAM AHMAD</td>
+            <td>✓</td>
+            <td>×</td>
+            <td>✓</td>
+            <td>✓</td>
+          </tr>
+          <tr>
+            <td>16</td>
+            <td>SI(Conf.)</td>
+            <td>ABHINAV KUMAR SINGH</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+          </tr>
+          <tr>
+            <td>17</td>
+            <td>ASIM</td>
+            <td>RATANDEEP SINGH</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+          </tr>
+          <tr>
+            <td>18</td>
+            <td>ASIM</td>
+            <td>PRASHANT KUMAR</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+          </tr>
+          <tr>
+            <td>19</td>
+            <td>ASIM</td>
+            <td>VIVEK KUMAR GAUD</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+          </tr>
+          <tr>
+            <td>20</td>
+            <td>ASIM</td>
+            <td>VINEETA</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+          </tr>
+          <tr>
+            <td>21</td>
+            <td>ASIM</td>
+            <td>UTKARSH ANAND</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+          </tr>
+          <tr>
+            <td>22</td>
+            <td>ASIM</td>
+            <td>PRAWEEN KUMAR MISHRA</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+            <td>×</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note">Note: ✓ means complete, × means pending</div>
+    </main>
+
+    <footer>
+      <p>
+        &copy; 2025 E-Office Status Tracker | Developed for UP Fire and
+        Emergency Services
+      </p>
+    </footer>
+
+    <script>
+      function filterTable() {
+        const input = document.getElementById("searchInput");
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById("statusTable");
+        const tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+          let tdName = tr[i].getElementsByTagName("td")[2];
+          let tdDesignation = tr[i].getElementsByTagName("td")[1];
+          if (tdName && tdDesignation) {
+            const txtValue = tdName.textContent || tdName.innerText;
+            const desigValue =
+              tdDesignation.textContent || tdDesignation.innerText;
+            if (
+              txtValue.toUpperCase().indexOf(filter) > -1 ||
+              desigValue.toUpperCase().indexOf(filter) > -1
+            ) {
+              tr[i].style.display = "";
+            } else {
+              tr[i].style.display = "none";
+            }
+          }
+        }
+      }
+
+      function calculateCompletionPercentages() {
+        const rows = document.querySelectorAll("#statusTable tbody tr");
+        let totalRows = 0;
+        let vpnYes = 0,
+          dscYes = 0,
+          emailYes = 0,
+          pimsYes = 0;
+
+        rows.forEach((row) => {
+          const cells = row.querySelectorAll("td");
+          if (cells.length >= 7) {
+            totalRows++;
+            if (cells[3].textContent.trim() === "✓") vpnYes++;
+            if (cells[4].textContent.trim() === "✓") dscYes++;
+            if (cells[5].textContent.trim() === "✓") emailYes++;
+            if (cells[6].textContent.trim() === "✓") pimsYes++;
+          }
+        });
+
+        const percentages = [
+          Math.round((vpnYes / totalRows) * 100),
+          Math.round((dscYes / totalRows) * 100),
+          Math.round((emailYes / totalRows) * 100),
+          Math.round((pimsYes / totalRows) * 100),
+        ];
+
+        return percentages;
+      }
+      function createChart(elementId, percentage, color) {
+        const ctx = document.getElementById(elementId).getContext("2d");
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: [""],
+            datasets: [
+              {
+                data: [percentage],
+                backgroundColor: color,
+                borderWidth: 0,
+                barPercentage: 0.6,
+                categoryPercentage: 0.8,
+              },
+            ],
+          },
+          options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false },
+            },
+            scales: {
+              x: {
+                display: false,
+                max: 100,
+                beginAtZero: true,
+              },
+              y: {
+                display: false,
+              },
+            },
+          },
+        });
+      }
+
+      function renderAllCharts() {
+        const percentages = calculateCompletionPercentages();
+
+        createChart("vpnChart", percentages[0], "#1565C0");
+        createChart("dscChart", percentages[1], "#00897B");
+        createChart("emailChart", percentages[2], "#F9A825");
+        createChart("pimsChart", percentages[3], "#C62828");
+
+        // Update percentage displays
+        document.getElementById(
+          "vpnPercent"
+        ).textContent = `${percentages[0]}%`;
+        document.getElementById(
+          "dscPercent"
+        ).textContent = `${percentages[1]}%`;
+        document.getElementById(
+          "emailPercent"
+        ).textContent = `${percentages[2]}%`;
+        document.getElementById(
+          "pimsPercent"
+        ).textContent = `${percentages[3]}%`;
+      }
+
+      // Initialize
+      renderAllCharts();
+    </script>
+  </body>
+</html>
